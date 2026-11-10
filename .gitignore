@@ -1,0 +1,10 @@
+# Assignment handout
+*.pdf
+
+# Common artifacts
+*.png
+*.mp4
+__pycache__/
+*.pyc
+*.mex*
+.mat
