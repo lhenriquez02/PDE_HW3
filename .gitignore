@@ -8,3 +8,14 @@ __pycache__/
 *.pyc
 *.mex*
 .mat
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Editor artifacts
+.auctex-auto/

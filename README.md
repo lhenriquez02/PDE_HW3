@@ -1,75 +1,98 @@
 # Numerical Solutions to PDEs — Working with Immersed Boundaries
 
-Mini-project implementing the **Immersed Boundary Method (IBM)** — technically the
-**Force Coupling Method (FCM)**, which differs only in the choice of kernel. The 2D
-Poisson finite-difference code from HW0 is extended to handle an *internal* Dirichlet
-boundary condition by introducing spreading/interpolation operators and solving the
-resulting saddle-point system with a **matrix-free GMRES** solver.
+Mini-project implementing the **Immersed Boundary Method (IBM)** — technically
+the **Force Coupling Method (FCM)**, which differs only in the choice of kernel
+(a 2D Gaussian regularized delta with width a = 1.2Δx). The 2D Poisson
+finite-difference code is extended to handle an *internal* Dirichlet condition
+by introducing spreading/interpolation operators and solving the resulting
+saddle-point system with **GMRES**.
+
+A written summary of the whole assignment, including every figure referenced
+below, lives in `report.tex` / `report.pdf`.
 
 ## Problems
 
 ### Problem 1 — Poisson Equation (sanity check)
-Solve ∇²u = f(x, y) on [0, 2π] × [0, 2π] with Dirichlet boundary conditions on all
-sides, using finite differences. Choose f and boundary data so that
+Solve ∇²u = f on [0, 2π]² with Dirichlet conditions on all sides, using the
+five-point finite-difference Laplacian, for the manufactured solution
+u(x, y) = cos(2x) sin(2y). Second-order accuracy is verified: the error table
+and the log–log error plot show the max-norm error proportional to Δx².
 
-> u(x, y) = cos(2x) sin(2y)
-
-is the exact test solution. Verify the code converges with **second order** in Δx.
+*Code:* `Code/question5_hw2_problem1.m` · *Figures:* `Graphics/poisson_hw2_problem1_*`
 
 ### Problem 2 — Poisson Equation with an Immersed Boundary
-Same setup, but now with an additional internal Dirichlet condition imposed on a
-circular immersed boundary:
+Same setup, but with an additional internal Dirichlet condition imposed on a
+circular immersed boundary (center (π, π), radius 1):
 
 - x_ib = π + cos(θ), y_ib = π + sin(θ), θ ∈ [0, 2π]
 - u(x_ib, y_ib) = cos(2x_ib) sin(2y_ib)
 
-The test solution is unchanged, so it can still be used for verification. Procedure:
+The test solution is unchanged, so it can still be used for verification.
+Procedure:
 
-1. **Discretize** the IB curve with N_ib points spaced roughly equal to Δx of the FD grid.
-   - Experiment with the spacing: effects of IB points much farther apart / much closer
-     together than Δx, on both accuracy and speed.
-2. **Spread:** place a charge q_k on each IB point. The charges modify the PDE to
-   ∇²u = f + Σₖ qₖ δ_a(x − x_k^ib, y − y_k^ib) = f + S^ib(q), where δ_a is a 2D Gaussian
-   with variance a = 1.2Δx.
-3. **Interpolate:** enforce the internal boundary condition by interpolating u onto the
-   IB grid, J^ib(u) = cos(2x_ib) sin(2y_ib), giving enough equations for the unknowns.
-4. **Solve the saddle-point system**
+1. **Discretize** the IB curve with N_ib points spaced roughly equal to Δx of
+   the FD grid.
+2. **Spread:** place a charge q_k on each IB point. The charges modify the PDE
+   to ∇²u = f + Σₖ qₖ δ_a(x − x_k^ib, y − y_k^ib) = f + S^ib(q), where δ_a is a
+   2D Gaussian with variance a = 1.2Δx.
+3. **Interpolate:** enforce the internal boundary condition by interpolating u
+   onto the IB grid, J^ib(u) = cos(2x_ib) sin(2y_ib), giving enough equations
+   for the unknowns.
+4. **Solve** the saddle-point system
+
    ```
    [ ∇²   −S^ib ] [ u ]   [ f ]
    [ J^ib    0  ] [ q ] = [ cos(2x_ib) sin(2y_ib) ]
    ```
-   - (a) Do **not** construct the matrix explicitly — write a matrix-free apply routine
-     using the S^ib and J^ib functions, then solve with **GMRES**.
-   - (b) Tune GMRES tolerance/iterations so it converges (e.g. `gmres(Amult, RHS, 1000, tol, 1)`).
-   - (c) Modify the right-hand side to account for the Dirichlet data on the outer box.
-5. **Verify convergence:** the solution should still converge in Δx, but at a reduced
-   order of **Δx^1.5** when the IB is included.
-6. The result should look identical to the original solution (see Fig. 2 of the assignment).
+
+   matrix-free with **GMRES** (no explicit matrices; block preconditioner built
+   from `L` and the Schur complement `J L⁻¹ S`).
+5. **Verify convergence:** the error decreases at every refinement and, in the
+   discrete L² norm, approaches the promised **O(Δx^1.5)** reduced order. The
+   max-norm error instead plateaus: the near-boundary charge layer of the
+   regularized delta does not vanish in the pointwise norm, and the GMRES
+   tolerance doubles as a regularization knob — solving the saddle system "too
+   exactly" amplifies near-null charge modes and hurts the pointwise error.
+6. The result looks identical to the original solution (see the report
+   figures).
+
+*Code:* `Code/problem2.m` · *Figures:* `Graphics/poisson_hw2_problem2_*`
 
 ### Problem 3 — An Almost Minimal Surface
-Solve the same problem with f(x, y) = 0 and homogeneous Dirichlet boundary conditions
-on the box, keeping the internal condition on the immersed boundary:
+Same immersed boundary setup with f = 0 and homogeneous Dirichlet conditions on
+the box: ∇²u = S^ib(q), u = 0 on ∂Ω, u(x_ib, y_ib) = cos(2x_ib) sin(2y_ib).
+There is no manufactured exact solution; the resulting shape is closely related
+to a *minimal surface* — the form a soap film would take on the given
+wire-frame.
 
-- ∇²u = S^ib(q), u = 0 on ∂ box, u(x_ib, y_ib) = cos(2x_ib) sin(2y_ib)
+*Code:* `Code/problem3.m` · *Figures:* `Graphics/poisson_hw2_problem3_*`
 
-The solution's shape is closely related to a *minimal surface* — the shape a soap film
-would take on the given wire-frame.
+### Extension — Multiple Shapes (two circles)
+The immersed-boundary machinery generalizes to several disjoint curves at once.
+Two circles of radius 0.65 centered at (π ± 1.25, π) are held at u = +1 and
+u = −1; the marker lists are merged into a single saddle-point system and solved
+with the same GMRES solver. The left interior fills to +1, the right to −1, with
+a dipole-like decay through the gap and out to the zero box boundary.
 
-### Problem 4 — Charlie's Rule (play with the code!)
-Pick something fun to show off, e.g.:
+*Code:* `Code/two_circles.m` · *Figures:* `Graphics/poisson_hw2_two_circles_*`
 
-1. Speed up S^ib / J^ib by evaluating the Gaussian kernel only where it exceeds a tolerance.
-2. Add multiple immersed shapes to the simulation.
-3. Add pseudo-dynamics by moving/deforming the immersed boundary in time and re-solving
-   (make videos).
-4. Improve GMRES convergence with a good initial guess and/or a **preconditioner**
-   (hint: Green's functions).
-5. Extend the code to impose a **Neumann condition** ∂u/∂n on the immersed boundary
-   instead of Dirichlet.
+## Plotting conventions
+All figures follow the class textbook's visual-communication chapter:
 
-*(Bonus idea from the assignment footnote: the true minimal-surface PDE
-`Div( ∇u / sqrt(1 + |∇u|²) ) = 0` is nonlinear but doable — potential project material.)*
+- the colorblind-safe class palette (teal/magenta family), with a divergent
+  colormap (teal → charcoal → magenta) for oscillatory fields,
+- discrete data plotted with symbols; reference slopes drawn as black dashed
+  lines, kept out of the legend and labeled directly on the plot,
+- LaTeX (Latin Modern) labels, ticks and legends at large font sizes,
+- log–log axes for error/convergence plots.
 
-## Files
+## Repository layout
 
-- `PDES_IB_HW2.pdf` — original assignment handout (gitignored).
+- `report.tex`, `report.pdf` — written report (the PDF is gitignored)
+- `Code/` — MATLAB sources: `question5_hw2_problem1.m`, `problem2.m`,
+  `problem3.m`, `two_circles.m`
+- `Graphics/` — exported figure PDFs (gitignored)
+- `PDES_IB_HW2.pdf` — assignment handout (gitignored)
+
+Build the report with `latexmk report.tex`; the figures in `Graphics/` are
+gitignored and are regenerated by running the MATLAB scripts.
