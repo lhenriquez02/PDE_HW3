@@ -1,21 +1,2 @@
-# Assignment handout
-*.pdf
-
-# Common artifacts
-*.png
-*.mp4
-__pycache__/
-*.pyc
-*.mex*
-.mat
-
-# LaTeX build artifacts
-*.aux
-*.log
-*.out
-*.fls
-*.fdb_latexmk
-*.synctex.gz
-
-# Editor artifacts
-.auctex-auto/
+# Assignment handout (the only gitignored file)
+PDES_IB_HW2.pdf
